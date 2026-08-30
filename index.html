@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="ja" class="h-full bg-slate-50 text-slate-800">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アンケート集計アプリ</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- HEIC to JPEG converter -->
+    <script src="https://cdn.jsdelivr.net/npm/heic2any/dist/heic2any.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="min-h-full flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8 bg-slate-50">
+
+<div class="max-w-3xl w-full mx-auto space-y-6">
+
+    <!-- Header Banner -->
+    <header class="text-center space-y-2">
+        <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight sm:text-4xl">
+            アンケート集計アプリ
+        </h1>
+        <p class="text-sm text-slate-500">
+            質問と画像選択肢を作成し、リアルタイムで投票・集計できます
+        </p>
+    </header>
+
+    <!-- SETUP / EDIT SCREEN -->
+    <div id="setupScreen" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+                <h2 id="setupHeaderTitle" class="text-xl font-bold text-slate-800">新規アンケート作成</h2>
+                <p class="text-xs text-slate-500 mt-1">質問は最大10件まで入力できます</p>
+            </div>
+            <!-- Edit status badge -->
+            <div id="editingBadge" class="hidden items-center gap-2 bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full text-xs font-semibold border border-amber-200">
+                <span>✏️ 既存データの編集モード</span>
+                <button id="cancelEditButton" type="button" class="underline hover:text-amber-900 text-xs font-medium">新規に戻る</button>
+            </div>
+        </div>
+
+        <!-- Saved Surveys Panel -->
+        <div id="savedSurveysPanel" class="bg-slate-50 rounded-xl p-4 border border-slate-200/80 space-y-3">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 012-2h10a2 2 0 012 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+                    保存済みアンケート一覧
+                </h3>
+            </div>
+            <div id="savedSurveysArea" class="text-xs text-slate-500 max-h-52 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                読み込み中...
+            </div>
+        </div>
+
+        <!-- Question Form Container -->
+        <div id="questionFormArea" class="space-y-6"></div>
+
+        <!-- Primary Action Button -->
+        <div class="pt-2">
+            <button id="createSurveyButton" type="button" class="w-full py-3.5 px-6 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-xl shadow-md transition duration-150 flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span id="startSurveyBtnText">アンケート開始</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- VOTE SCREEN -->
+    <div id="voteScreen" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-6 hidden">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <span id="questionCounter" class="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full"></span>
+            <button id="editCurrentSurveyBtn" type="button" class="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                内容を再編集
+            </button>
+        </div>
+
+        <div>
+            <h2 id="questionText" class="text-xl sm:text-2xl font-bold text-slate-800 leading-snug"></h2>
+        </div>
+
+        <!-- Choices -->
+        <div id="choicesArea" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+
+        <!-- Question Navigation Buttons -->
+        <div class="flex gap-3 pt-2">
+            <button id="prevQuestionButton" type="button" class="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 font-medium rounded-xl text-sm transition">前の質問</button>
+            <button id="nextQuestionButton" type="button" class="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 font-medium rounded-xl text-sm transition">次の質問</button>
+        </div>
+
+        <!-- Control Actions -->
+        <div class="pt-4 border-t border-slate-100 space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+                <button id="showResultsButton" type="button" class="py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm shadow-sm transition">集計結果を見る</button>
+                <button id="resetVotesButton" type="button" class="py-3 px-4 bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium rounded-xl text-sm transition">投票リセット</button>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-2">
+                <h3 class="text-xs font-bold text-slate-700">このアンケートを保存 / 更新</h3>
+                <div class="flex gap-2">
+                    <input id="saveSurveyNameInput" type="text" placeholder="保存名を入力 (例: 顧客満足度調査)" class="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button id="saveSurveyButton" type="button" class="py-2 px-4 bg-slate-800 hover:bg-slate-900 text-white font-medium text-sm rounded-lg whitespace-nowrap transition">保存する</button>
+                </div>
+            </div>
+
+            <button id="backToSetupButton" type="button" class="w-full py-2.5 text-xs text-slate-500 hover:text-slate-800 font-medium text-center transition">新しくを作成する（TOPに戻る）</button>
+        </div>
+    </div>
+
+    <!-- RESULT SCREEN -->
+    <div id="resultScreen" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-6 hidden">
+        <div class="border-b border-slate-100 pb-3">
+            <h2 class="text-2xl font-extrabold text-slate-900">集計結果</h2>
+        </div>
+
+        <div id="resultsArea" class="space-y-6"></div>
+
+        <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100">
+            <button id="backToVoteButton" type="button" class="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm shadow-sm transition">投票画面に戻る</button>
+            <button id="backToSetupFromResultButton" type="button" class="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-sm transition">トップに戻る</button>
+        </div>
+    </div>
+
+</div>
+
+<!-- CUSTOM MODAL CONFIRM DIALOG -->
+<div id="modalOverlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl space-y-4">
+        <h3 id="modalTitle" class="text-lg font-bold text-slate-900">確認</h3>
+        <p id="modalMessage" class="text-sm text-slate-600 leading-relaxed"></p>
+        <div class="flex justify-end gap-3 pt-2">
+            <button id="modalCancelBtn" type="button" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition">キャンセル</button>
+            <button id="modalConfirmBtn" type="button" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition">実行する</button>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST NOTIFICATION CONTAINER -->
+<div id="toastContainer" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+<script>
+const MAX_QUESTIONS = 10;
+const MAX_CHOICES = 5;
+const DB_NAME = "survey-app-db";
+const DB_VERSION = 1;
+const SURVEY_STORE = "surveys";
+const APP_STATE_STORE = "appState";
+const DRAFT_KEY = "draftSurvey";
+
+const emptySurveyData = () => ({
+    questions: [],
+    currentQuestionIndex: 0
+});
+
+let surveyData = emptySurveyData();
+let editingSurveyId = null; // Track current editing saved survey ID
+let storageMode = "memory";
+let dbPromise = null;
+
+function showToast(message, type = "info") {
+    const container = document.getElementById("toastContainer");
+    const toast = document.createElement("div");
+    
+    let bgColor = "bg-slate-800 text-white";
+    if (type === "success") bgColor = "bg-emerald-600 text-white";
+    if (type === "error") bgColor = "bg-rose-600 text-white";
+
+    toast.className = `${bgColor} px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center gap-2 max-w-xs`;
+    toast.textContent = message;
+
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => {
+        toast.classList.remove("translate-y-2", "opacity-0");
+    });
+
+    setTimeout(() => {
+        toast.classList.add("opacity-0", "translate-y-2");
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+function customConfirm(message, title = "確認") {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById("modalOverlay");
+        const modalTitle = document.getElementById("modalTitle");
+        const modalMessage = document.getElementById("modalMessage");
+        const cancelBtn = document.getElementById("modalCancelBtn");
+        const confirmBtn = document.getElementById("modalConfirmBtn");
+
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+
+        overlay.classList.remove("hidden");
+
+        const cleanup = () => {
+            overlay.classList.add("hidden");
+            cancelBtn.removeEventListener("click", onCancel);
+            confirmBtn.removeEventListener("click", onConfirm);
+        };
+
+        const onCancel = () => {
+            cleanup();
+            resolve(false);
+        };
+
+        const onConfirm = () => {
+            cleanup();
+            resolve(true);
+        };
+
+        cancelBtn.addEventListener("click", onCancel);
+        confirmBtn.addEventListener("click", onConfirm);
+    });
+}
+
+function showStorageNotice() {
+    if (storageMode !== "memory") return;
+
+    const notice = document.createElement("p");
+    notice.className = "text-xs text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200 mt-2";
+    notice.textContent = "この環境では保存機能制限のため、再読み込みすると一時データはリセットされます。";
+
+    const setupScreen = document.getElementById("setupScreen");
+    if (!document.getElementById("storageNotice")) {
+        notice.id = "storageNotice";
+        setupScreen.insertBefore(notice, document.getElementById("questionFormArea"));
+    }
+}
+
+function getLocalStorageSafe() {
+    try {
+        return window.localStorage;
+    } catch (error) {
+        return null;
+    }
+}
+
+function openDatabase() {
+    if (!("indexedDB" in window)) {
+        return Promise.reject(new Error("IndexedDB is not supported"));
+    }
+
+    if (dbPromise) return dbPromise;
+
+    dbPromise = new Promise((resolve, reject) => {
+        const request = window.indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(SURVEY_STORE)) {
+                db.createObjectStore(SURVEY_STORE, { keyPath: "id" });
+            }
+            if (!db.objectStoreNames.contains(APP_STATE_STORE)) {
+                db.createObjectStore(APP_STATE_STORE, { keyPath: "key" });
+            }
+        };
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error("IndexedDB open failed"));
+    });
+
+    return dbPromise;
+}
+
+function requestToPromise(request) {
+    return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error("Database request failed"));
+    });
+}
+
+function cloneSurveyData(data) {
+    return JSON.parse(JSON.stringify(data));
+}
+
+function isHeicFile(file) {
+    if (!file) return false;
+    const name = typeof file.name === "string" ? file.name.toLowerCase() : "";
+    const type = typeof file.type === "string" ? file.type.toLowerCase() : "";
+    return name.endsWith(".heic") || name.endsWith(".heif") || type.includes("heic") || type.includes("heif");
+}
+
+async function convertHeicToDataUrl(file) {
+    if (typeof heic2any !== "function") {
+        throw new Error("HEIC変換ライブラリを読み込めませんでした");
+    }
+
+    const convertedBlob = await heic2any({
+        blob: file,
+        toType: "image/jpeg",
+        quality: 0.85
+    });
+
+    const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+    return fileToDataUrl(blob);
+}
+
+function normalizeChoice(choice) {
+    if (typeof choice === "string") {
+        return { text: choice, image: "" };
+    }
+    if (!choice || typeof choice.text !== "string") return null;
+    return {
+        text: choice.text,
+        image: typeof choice.image === "string" ? choice.image : ""
+    };
+}
+
+async function initializeStorage() {
+    try {
+        await openDatabase();
+        storageMode = "indexedDB";
+        return;
+    } catch (error) {
+        const localStorageRef = getLocalStorageSafe();
+        if (localStorageRef) {
+            storageMode = "localStorage";
+            return;
+        }
+        storageMode = "memory";
+        showStorageNotice();
+    }
+}
+
+async function readAppState(key) {
+    if (storageMode === "indexedDB") {
+        const db = await openDatabase();
+        const tx = db.transaction(APP_STATE_STORE, "readonly");
+        const store = tx.objectStore(APP_STATE_STORE);
+        const result = await requestToPromise(store.get(key));
+        return result ? result.value : null;
+    }
+    if (storageMode === "localStorage") {
+        const storage = getLocalStorageSafe();
+        if (!storage) return null;
+        const raw = storage.getItem(key);
+        return raw ? JSON.parse(raw) : null;
+    }
+    return null;
+}
+
+async function writeAppState(key, value) {
+    if (storageMode === "indexedDB") {
+        const db = await openDatabase();
+        const tx = db.transaction(APP_STATE_STORE, "readwrite");
+        const store = tx.objectStore(APP_STATE_STORE);
+        await requestToPromise(store.put({ key, value }));
+        return;
+    }
+    if (storageMode === "localStorage") {
+        const storage = getLocalStorageSafe();
+        if (!storage) return;
+        storage.setItem(key, JSON.stringify(value));
+    }
+}
+
+async function removeAppState(key) {
+    if (storageMode === "indexedDB") {
+        const db = await openDatabase();
+        const tx = db.transaction(APP_STATE_STORE, "readwrite");
+        const store = tx.objectStore(APP_STATE_STORE);
+        await requestToPromise(store.delete(key));
+        return;
+    }
+    if (storageMode === "localStorage") {
+        const storage = getLocalStorageSafe();
+        if (!storage) return;
+        storage.removeItem(key);
+    }
+}
+
+async function listSavedSurveys() {
+    if (storageMode === "indexedDB") {
+        const db = await openDatabase();
+        const tx = db.transaction(SURVEY_STORE, "readonly");
+        const store = tx.objectStore(SURVEY_STORE);
+        const items = await requestToPromise(store.getAll());
+        return items.sort((a, b) => b.savedAt - a.savedAt);
+    }
+    if (storageMode === "localStorage") {
+        const storage = getLocalStorageSafe();
+        if (!storage) return [];
+        const raw = storage.getItem("savedSurveys");
+        const items = raw ? JSON.parse(raw) : [];
+        return Array.isArray(items) ? items.sort((a, b) => b.savedAt - a.savedAt) : [];
+    }
+    return [];
+}
+
+async function persistSavedSurveys(items) {
+    if (storageMode !== "localStorage") return;
+    const storage = getLocalStorageSafe();
+    if (!storage) return;
+    storage.setItem("savedSurveys", JSON.stringify(items));
+}
+
+async function saveNamedSurvey(name, targetId = null) {
+    const id = targetId || ("survey-" + Date.now() + "-" + Math.random().toString(16).slice(2));
+    const payload = {
+        id,
+        name,
+        savedAt: Date.now(),
+        data: cloneSurveyData(surveyData)
+    };
+
+    if (storageMode === "indexedDB") {
+        const db = await openDatabase();
+        const tx = db.transaction(SURVEY_STORE, "readwrite");
+        const store = tx.objectStore(SURVEY_STORE);
+        await requestToPromise(store.put(payload));
+        return id;
+    }
+
+    if (storageMode === "localStorage") {
+        const items = await listSavedSurveys();
+        const idx = items.findIndex((i) => i.id === id);
+        if (idx >= 0) {
+            items[idx] = payload;
+        } else {
+            items.push(payload);
+        }
+        await persistSavedSurveys(items);
+        return id;
+    }
+    return id;
+}
+
+async function loadNamedSurvey(id) {
+    if (storageMode === "indexedDB") {
+        const db = await openDatabase();
+        const tx = db.transaction(SURVEY_STORE, "readonly");
+        const store = tx.objectStore(SURVEY_STORE);
+        return requestToPromise(store.get(id));
+    }
+    if (storageMode === "localStorage") {
+        const items = await listSavedSurveys();
+        return items.find((item) => item.id === id) || null;
+    }
+    return null;
+}
+
+async function deleteNamedSurvey(id) {
+    if (storageMode === "indexedDB") {
+        const db = await openDatabase();
+        const tx = db.transaction(SURVEY_STORE, "readwrite");
+        const store = tx.objectStore(SURVEY_STORE);
+        await requestToPromise(store.delete(id));
+        return;
+    }
+    if (storageMode === "localStorage") {
+        const items = await listSavedSurveys();
+        const filtered = items.filter((item) => item.id !== id);
+        await persistSavedSurveys(filtered);
+    }
+}
+
+async function saveData() {
+    if (storageMode === "memory") {
+        showStorageNotice();
+        return;
+    }
+    try {
+        await writeAppState(DRAFT_KEY, surveyData);
+    } catch (error) {
+        storageMode = "memory";
+        showStorageNotice();
+    }
+}
+
+function isValidSurveyData(data) {
+    if (!data || !Array.isArray(data.questions)) return false;
+    if (typeof data.currentQuestionIndex !== "number" || !Number.isInteger(data.currentQuestionIndex)) return false;
+    if (data.questions.length === 0 || data.questions.length > MAX_QUESTIONS) return false;
+
+    return data.questions.every((item) => {
+        if (!item || typeof item.question !== "string") return false;
+        if (!Array.isArray(item.choices) || !Array.isArray(item.votes)) return false;
+        if (item.choices.length < 2 || item.choices.length > MAX_CHOICES || item.choices.length !== item.votes.length) return false;
+        return item.choices.every((choice) => normalizeChoice(choice) !== null) &&
+            item.votes.every((vote) => Number.isInteger(vote) && vote >= 0);
+    });
+}
+
+function normalizeSurveyData(data) {
+    if (!isValidSurveyData(data)) return null;
+    return {
+        questions: data.questions.map((item) => ({
+            question: item.question,
+            choices: item.choices.map((choice) => normalizeChoice(choice)),
+            votes: [...item.votes]
+        })),
+        currentQuestionIndex: data.currentQuestionIndex
+    };
+}
+
+async function loadData() {
+    try {
+        const draft = await readAppState(DRAFT_KEY);
+        const normalized = normalizeSurveyData(draft);
+
+        if (normalized) {
+            surveyData = normalized;
+            surveyData.currentQuestionIndex = Math.min(
+                surveyData.currentQuestionIndex,
+                surveyData.questions.length - 1
+            );
+            startVoteScreen();
+            return;
+        }
+    } catch (error) {
+        console.error("下書きアンケートの読み込みに失敗しました", error);
+    }
+
+    surveyData = emptySurveyData();
+    renderSetupInputs();
+}
+
+function renderSetupInputs(dataToPrefill = null) {
+    const area = document.getElementById("questionFormArea");
+    area.textContent = "";
+
+    const questionsList = dataToPrefill ? dataToPrefill.questions : [];
+
+    for (let questionIndex = 0; questionIndex < MAX_QUESTIONS; questionIndex += 1) {
+        const existingQ = questionsList[questionIndex] || null;
+
+        const block = document.createElement("section");
+        block.className = "p-5 bg-slate-50 border border-slate-200 rounded-xl space-y-4";
+
+        const titleHeader = document.createElement("div");
+        titleHeader.className = "flex items-center justify-between";
+        
+        const title = document.createElement("h3");
+        title.className = "text-sm font-bold text-slate-800 flex items-center gap-2";
+        title.innerHTML = `<span class="w-5 h-5 flex items-center justify-center bg-blue-600 text-white rounded-full text-xs font-bold">${questionIndex + 1}</span> 質問 ${questionIndex + 1}`;
+        titleHeader.appendChild(title);
+
+        if (questionIndex >= 1) {
+            const optionalTag = document.createElement("span");
+            optionalTag.className = "text-[10px] uppercase font-semibold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded";
+            optionalTag.textContent = "任意";
+            titleHeader.appendChild(optionalTag);
+        }
+
+        block.appendChild(titleHeader);
+
+        const questionInput = document.createElement("input");
+        questionInput.className = "questionInput w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium";
+        questionInput.placeholder = `質問文を入力 (例: お気に入りの季節は？)`;
+        questionInput.value = existingQ ? existingQ.question : "";
+        questionInput.setAttribute("data-question-index", String(questionIndex));
+        block.appendChild(questionInput);
+
+        const choicesContainer = document.createElement("div");
+        choicesContainer.className = "space-y-3 pt-1";
+
+        for (let choiceIndex = 0; choiceIndex < MAX_CHOICES; choiceIndex += 1) {
+            const existingChoice = existingQ && existingQ.choices[choiceIndex] ? existingQ.choices[choiceIndex] : null;
+
+            const choiceGroup = document.createElement("div");
+            choiceGroup.className = "p-3 bg-white border border-slate-200/80 rounded-lg space-y-2";
+
+            const choiceInput = document.createElement("input");
+            choiceInput.className = "choiceInput w-full px-3 py-2 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500";
+            choiceInput.placeholder = `選択肢 ${choiceIndex + 1}`;
+            choiceInput.value = existingChoice ? existingChoice.text : "";
+            choiceInput.setAttribute("data-question-index", String(questionIndex));
+            choiceInput.setAttribute("data-choice-index", String(choiceIndex));
+            choiceGroup.appendChild(choiceInput);
+
+            const fileArea = document.createElement("div");
+            fileArea.className = "flex items-center gap-2 text-xs text-slate-500";
+
+            const imageInput = document.createElement("input");
+            imageInput.type = "file";
+            imageInput.accept = "image/*";
+            imageInput.className = "choiceImageInput text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer";
+            imageInput.setAttribute("data-question-index", String(questionIndex));
+            imageInput.setAttribute("data-choice-index", String(choiceIndex));
+            if (existingChoice && existingChoice.image) {
+                imageInput.dataset.imageData = existingChoice.image;
+            }
+
+            fileArea.appendChild(imageInput);
+            choiceGroup.appendChild(fileArea);
+
+            const preview = document.createElement("img");
+            preview.className = `choiceImagePreview max-h-36 object-contain rounded-lg border border-slate-200 bg-slate-50 mt-2 ${existingChoice && existingChoice.image ? "" : "hidden"}`;
+            if (existingChoice && existingChoice.image) {
+                preview.src = existingChoice.image;
+            }
+            preview.alt = "選択肢画像プレビュー";
+            choiceGroup.appendChild(preview);
+
+            imageInput.addEventListener("change", () => {
+                void handleChoiceImageChange(imageInput, preview);
+            });
+
+            choicesContainer.appendChild(choiceGroup);
+        }
+
+        block.appendChild(choicesContainer);
+        area.appendChild(block);
+    }
+}
+
+async function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+        reader.onerror = () => reject(new Error("画像の読み込みに失敗しました"));
+        reader.readAsDataURL(file);
+    });
+}
+
+async function handleChoiceImageChange(input, preview) {
+    const file = input.files && input.files[0];
+    if (!file) {
+        input.dataset.imageData = "";
+        preview.src = "";
+        preview.classList.add("hidden");
+        return;
+    }
+
+    if (!file.type.startsWith("image/") && !isHeicFile(file)) {
+        input.value = "";
+        input.dataset.imageData = "";
+        preview.src = "";
+        preview.classList.add("hidden");
+        showToast("画像ファイルを選択してください", "error");
+        return;
+    }
+
+    try {
+        const dataUrl = isHeicFile(file)
+            ? await convertHeicToDataUrl(file)
+            : await fileToDataUrl(file);
+
+        input.dataset.imageData = dataUrl;
+        preview.src = dataUrl;
+        preview.classList.remove("hidden");
+    } catch (error) {
+        input.value = "";
+        input.dataset.imageData = "";
+        preview.src = "";
+        preview.classList.add("hidden");
+        showToast(error.message || "画像の読み込みに失敗しました", "error");
+    }
+}
+
+function findChoiceImageInput(questionIndex, choiceIndex) {
+    return document.querySelector(
+        `.choiceImageInput[data-question-index="${questionIndex}"][data-choice-index="${choiceIndex}"]`
+    );
+}
+
+async function createSurvey() {
+    const questionInputs = document.querySelectorAll(".questionInput");
+    const questions = [];
+
+    questionInputs.forEach((questionInput, questionIndex) => {
+        const question = questionInput.value.trim();
+        if (question === "") return;
+
+        const choices = [];
+
+        for (let choiceIndex = 0; choiceIndex < MAX_CHOICES; choiceIndex += 1) {
+            const choiceInput = document.querySelector(
+                `.choiceInput[data-question-index="${questionIndex}"][data-choice-index="${choiceIndex}"]`
+            );
+            const imageInput = findChoiceImageInput(questionIndex, choiceIndex);
+            const value = choiceInput ? choiceInput.value.trim() : "";
+            const image = imageInput && typeof imageInput.dataset.imageData === "string"
+                ? imageInput.dataset.imageData
+                : "";
+
+            if (value !== "" || image !== "") {
+                choices.push({
+                    text: value !== "" ? value : "画像の選択肢",
+                    image
+                });
+            }
+        }
+
+        if (choices.length < 2) {
+            throw new Error(`質問${questionIndex + 1}は選択肢を2つ以上入力してください`);
+        }
+
+        // Preserve existing vote counts if length matches when editing
+        let existingVotes = new Array(choices.length).fill(0);
+        if (editingSurveyId && surveyData.questions[questionIndex]) {
+            const prevQ = surveyData.questions[questionIndex];
+            if (prevQ.choices.length === choices.length) {
+                existingVotes = [...prevQ.votes];
+            }
+        }
+
+        questions.push({
+            question,
+            choices,
+            votes: existingVotes
+        });
+    });
+
+    if (questions.length === 0) {
+        showToast("少なくとも1つは質問を入力してください", "error");
+        return;
+    }
+
+    surveyData = {
+        questions,
+        currentQuestionIndex: 0
+    };
+
+    void saveData();
+    startVoteScreen();
+}
+
+function startVoteScreen() {
+    document.getElementById("setupScreen").classList.add("hidden");
+    document.getElementById("voteScreen").classList.remove("hidden");
+    document.getElementById("resultScreen").classList.add("hidden");
+
+    renderCurrentQuestion();
+}
+
+function renderCurrentQuestion() {
+    const current = surveyData.questions[surveyData.currentQuestionIndex];
+    const area = document.getElementById("choicesArea");
+
+    document.getElementById("questionCounter").textContent =
+        `質問 ${surveyData.currentQuestionIndex + 1} / ${surveyData.questions.length}`;
+
+    document.getElementById("questionText").textContent = current.question;
+    area.textContent = "";
+
+    current.choices.forEach((choice, index) => {
+        const button = document.createElement("button");
+        button.className = "group relative flex flex-col items-center justify-center p-5 bg-white hover:bg-blue-50/50 border-2 border-slate-200 hover:border-blue-500 rounded-2xl shadow-sm hover:shadow transition duration-200 text-slate-800 font-semibold cursor-pointer text-base";
+        button.type = "button";
+
+        const text = document.createElement("span");
+        text.className = "group-hover:text-blue-700 transition";
+        text.textContent = choice.text;
+        button.appendChild(text);
+
+        if (choice.image) {
+            const image = document.createElement("img");
+            image.className = "mt-3 rounded-xl max-h-44 object-contain border border-slate-200 w-full bg-slate-50";
+            image.src = choice.image;
+            image.alt = choice.text || "選択肢画像";
+            button.appendChild(image);
+        }
+
+        button.addEventListener("click", () => vote(index));
+        area.appendChild(button);
+    });
+
+    document.getElementById("prevQuestionButton").disabled =
+        surveyData.currentQuestionIndex === 0;
+
+    document.getElementById("nextQuestionButton").disabled =
+        surveyData.currentQuestionIndex === surveyData.questions.length - 1;
+}
+
+function moveQuestion(step) {
+    const nextIndex = surveyData.currentQuestionIndex + step;
+    if (nextIndex < 0 || nextIndex >= surveyData.questions.length) return;
+
+    surveyData.currentQuestionIndex = nextIndex;
+    void saveData();
+    renderCurrentQuestion();
+}
+
+function vote(choiceIndex) {
+    const current = surveyData.questions[surveyData.currentQuestionIndex];
+    current.votes[choiceIndex] += 1;
+    void saveData();
+    showToast("投票を受理しました", "success");
+}
+
+function showResults() {
+    document.getElementById("voteScreen").classList.add("hidden");
+    document.getElementById("resultScreen").classList.remove("hidden");
+
+    const area = document.getElementById("resultsArea");
+    area.textContent = "";
+
+    surveyData.questions.forEach((item, questionIndex) => {
+        const section = document.createElement("section");
+        section.className = "p-5 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-4";
+
+        const totalVotes = item.votes.reduce((a, b) => a + b, 0);
+
+        const title = document.createElement("h3");
+        title.className = "text-base font-bold text-slate-800 border-b border-slate-200 pb-2 flex justify-between items-center";
+        title.innerHTML = `<span>Q${questionIndex + 1}. ${item.question}</span> <span class="text-xs font-semibold text-slate-500 bg-slate-200/70 px-2.5 py-1 rounded-full">計 ${totalVotes} 票</span>`;
+        section.appendChild(title);
+
+        item.choices.forEach((choice, choiceIndex) => {
+            const voteCount = item.votes[choiceIndex];
+            const percent = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
+
+            const resultItem = document.createElement("div");
+            resultItem.className = "p-4 bg-white border border-slate-200 rounded-xl space-y-2";
+
+            const topRow = document.createElement("div");
+            topRow.className = "flex justify-between items-center text-sm font-semibold text-slate-800";
+            
+            const label = document.createElement("span");
+            label.textContent = choice.text;
+            
+            const stats = document.createElement("span");
+            stats.className = "text-blue-600 font-bold";
+            stats.textContent = `${voteCount}票 (${percent}%)`;
+
+            topRow.appendChild(label);
+            topRow.appendChild(stats);
+            resultItem.appendChild(topRow);
+
+            // Progress Bar Visual
+            const barBg = document.createElement("div");
+            barBg.className = "w-full bg-slate-100 rounded-full h-2.5 overflow-hidden";
+            const barFill = document.createElement("div");
+            barFill.className = "bg-blue-600 h-full rounded-full transition-all duration-500";
+            barFill.style.width = `${percent}%`;
+            barBg.appendChild(barFill);
+            resultItem.appendChild(barBg);
+
+            if (choice.image) {
+                const image = document.createElement("img");
+                image.className = "mt-2 rounded-lg max-h-32 object-contain border border-slate-200 bg-slate-50";
+                image.src = choice.image;
+                image.alt = choice.text || "選択肢画像";
+                resultItem.appendChild(image);
+            }
+
+            section.appendChild(resultItem);
+        });
+
+        area.appendChild(section);
+    });
+}
+
+function backToVote() {
+    document.getElementById("resultScreen").classList.add("hidden");
+    document.getElementById("voteScreen").classList.remove("hidden");
+    renderCurrentQuestion();
+}
+
+async function backToSetup() {
+    const confirmed = await customConfirm("現在の投票・編集状態を抜けてトップ作成画面に戻りますか？", "確認");
+    if (!confirmed) return;
+
+    await removeAppState(DRAFT_KEY);
+
+    editingSurveyId = null;
+    surveyData = emptySurveyData();
+    updateEditingStateUI(null);
+    renderSetupInputs();
+
+    document.getElementById("questionCounter").textContent = "";
+    document.getElementById("questionText").textContent = "";
+    document.getElementById("choicesArea").textContent = "";
+    document.getElementById("resultsArea").textContent = "";
+
+    document.getElementById("voteScreen").classList.add("hidden");
+    document.getElementById("resultScreen").classList.add("hidden");
+    document.getElementById("setupScreen").classList.remove("hidden");
+}
+
+async function resetVotes() {
+    const confirmed = await customConfirm("現在の投票結果を全て0にリセットしますか？", "投票のリセット");
+    if (!confirmed) return;
+
+    surveyData.questions = surveyData.questions.map((item) => ({
+        question: item.question,
+        choices: item.choices.map((choice) => ({
+            text: choice.text,
+            image: choice.image
+        })),
+        votes: new Array(item.choices.length).fill(0)
+    }));
+
+    void saveData();
+    showToast("投票結果をリセットしました", "info");
+}
+
+function formatSavedAt(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleString("ja-JP", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function updateEditingStateUI(surveyName = null) {
+    const badge = document.getElementById("editingBadge");
+    const headerTitle = document.getElementById("setupHeaderTitle");
+    const startBtnText = document.getElementById("startSurveyBtnText");
+
+    if (editingSurveyId && surveyName) {
+        badge.classList.remove("hidden");
+        badge.classList.add("flex");
+        headerTitle.textContent = `「${surveyName}」の編集`;
+        startBtnText.textContent = "変更を反映してアンケート開始";
+    } else {
+        badge.classList.add("hidden");
+        badge.classList.remove("flex");
+        headerTitle.textContent = "新規アンケート作成";
+        startBtnText.textContent = "アンケート開始";
+    }
+}
+
+async function renderSavedSurveys() {
+    const area = document.getElementById("savedSurveysArea");
+    area.textContent = "";
+
+    if (storageMode === "memory") {
+        area.textContent = "この環境では保存済み一覧機能は使えません。";
+        return;
+    }
+
+    const items = await listSavedSurveys();
+
+    if (items.length === 0) {
+        area.textContent = "保存済みのアンケートはありません。";
+        return;
+    }
+
+    items.forEach((item) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "p-3 bg-white border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs hover:border-slate-300 transition";
+
+        const info = document.createElement("div");
+        info.className = "space-y-0.5";
+
+        const title = document.createElement("div");
+        title.className = "font-bold text-slate-800 text-xs sm:text-sm";
+        title.textContent = item.name;
+        info.appendChild(title);
+
+        const meta = document.createElement("div");
+        meta.className = "text-[11px] text-slate-500";
+        meta.textContent = `${item.data.questions.length}件の質問 • 保存: ${formatSavedAt(item.savedAt)}`;
+        info.appendChild(meta);
+
+        wrapper.appendChild(info);
+
+        const buttons = document.createElement("div");
+        buttons.className = "flex items-center gap-1.5 self-end sm:self-center";
+
+        // EDIT BUTTON
+        const editButton = document.createElement("button");
+        editButton.type = "button";
+        editButton.className = "px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold rounded-lg text-xs transition border border-amber-200/80 flex items-center gap-1";
+        editButton.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg> 編集`;
+        editButton.addEventListener("click", async () => {
+            const saved = await loadNamedSurvey(item.id);
+            const normalized = saved ? normalizeSurveyData(saved.data) : null;
+            if (!normalized) {
+                showToast("保存データを読み込めませんでした", "error");
+                return;
+            }
+
+            editingSurveyId = item.id;
+            surveyData = normalized;
+            renderSetupInputs(surveyData);
+            updateEditingStateUI(item.name);
+
+            // Pre-fill save name input in voting screen
+            document.getElementById("saveSurveyNameInput").value = item.name;
+
+            document.getElementById("voteScreen").classList.add("hidden");
+            document.getElementById("resultScreen").classList.add("hidden");
+            document.getElementById("setupScreen").classList.remove("hidden");
+
+            showToast(`「${item.name}」を編集状態に設定しました`, "info");
+        });
+        buttons.appendChild(editButton);
+
+        // OPEN BUTTON
+        const loadButton = document.createElement("button");
+        loadButton.type = "button";
+        loadButton.className = "px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded-lg text-xs transition border border-blue-200/80 flex items-center gap-1";
+        loadButton.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> 開く`;
+        loadButton.addEventListener("click", async () => {
+            const saved = await loadNamedSurvey(item.id);
+            const normalized = saved ? normalizeSurveyData(saved.data) : null;
+            if (!normalized) {
+                showToast("保存データを読み込めませんでした", "error");
+                return;
+            }
+
+            editingSurveyId = item.id;
+            surveyData = normalized;
+            surveyData.currentQuestionIndex = Math.min(
+                surveyData.currentQuestionIndex,
+                surveyData.questions.length - 1
+            );
+            document.getElementById("saveSurveyNameInput").value = item.name;
+            await saveData();
+            startVoteScreen();
+        });
+        buttons.appendChild(loadButton);
+
+        // DELETE BUTTON
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium rounded-lg text-xs transition border border-rose-200/80";
+        deleteButton.textContent = "削除";
+        deleteButton.addEventListener("click", async () => {
+            const confirmed = await customConfirm(`「${item.name}」を完全に削除しますか？`, "削除の確認");
+            if (!confirmed) return;
+
+            await deleteNamedSurvey(item.id);
+            if (editingSurveyId === item.id) {
+                editingSurveyId = null;
+                updateEditingStateUI(null);
+            }
+            await renderSavedSurveys();
+            showToast("アンケートを削除しました", "info");
+        });
+        buttons.appendChild(deleteButton);
+
+        wrapper.appendChild(buttons);
+        area.appendChild(wrapper);
+    });
+}
+
+async function saveCurrentSurveyByName() {
+    if (storageMode === "memory") {
+        showToast("この環境では保存機能を使えません", "error");
+        return;
+    }
+
+    if (!isValidSurveyData(surveyData)) {
+        showToast("保存できるアンケートデータがありません", "error");
+        return;
+    }
+
+    const input = document.getElementById("saveSurveyNameInput");
+    const name = input.value.trim();
+
+    if (name === "") {
+        showToast("保存名を入力してください", "error");
+        return;
+    }
+
+    const newId = await saveNamedSurvey(name, editingSurveyId);
+    editingSurveyId = newId;
+
+    await renderSavedSurveys();
+    showToast("アンケートを保存・更新しました", "success");
+}
+
+async function initializeApp() {
+    renderSetupInputs();
+    await initializeStorage();
+    await renderSavedSurveys();
+    await loadData();
+}
+
+document.getElementById("createSurveyButton").addEventListener("click", () => {
+    createSurvey().catch((error) => {
+        showToast(error.message, "error");
+    });
+});
+
+document.getElementById("cancelEditButton").addEventListener("click", () => {
+    editingSurveyId = null;
+    updateEditingStateUI(null);
+    surveyData = emptySurveyData();
+    renderSetupInputs();
+    showToast("新規作成モードに戻りました", "info");
+});
+
+document.getElementById("editCurrentSurveyBtn").addEventListener("click", async () => {
+    renderSetupInputs(surveyData);
+    document.getElementById("voteScreen").classList.add("hidden");
+    document.getElementById("setupScreen").classList.remove("hidden");
+});
+
+document.getElementById("prevQuestionButton").addEventListener("click", () => {
+    moveQuestion(-1);
+});
+
+document.getElementById("nextQuestionButton").addEventListener("click", () => {
+    moveQuestion(1);
+});
+
+document.getElementById("showResultsButton").addEventListener("click", showResults);
+document.getElementById("resetVotesButton").addEventListener("click", resetVotes);
+document.getElementById("backToVoteButton").addEventListener("click", backToVote);
+document.getElementById("backToSetupButton").addEventListener("click", () => {
+    void backToSetup();
+});
+document.getElementById("backToSetupFromResultButton").addEventListener("click", () => {
+    void backToSetup();
+});
+document.getElementById("saveSurveyButton").addEventListener("click", () => {
+    void saveCurrentSurveyByName();
+});
+
+void initializeApp();
+</script>
+
+</body>
+</html>
