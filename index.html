@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>アンケート集計アプリ</title>
+    <title>アンケート集計アプリ (Googleフォーム風対応)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- HEIC to JPEG converter -->
     <script src="https://cdn.jsdelivr.net/npm/heic2any/dist/heic2any.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .custom-scrollbar::-webkit-scrollbar {
@@ -26,20 +26,49 @@
 
     <!-- Header Banner -->
     <header class="text-center space-y-2">
-        <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight sm:text-4xl">
-            📊 アンケート集計アプリ
+        <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight sm:text-4xl flex items-center justify-center gap-2">
+            📊 リアルタイム集計アンケート
         </h1>
         <p class="text-sm text-slate-500">
-            質問や画像選択肢を自由に作成・編集し、リアルタイムで投票と集計ができます
+            GoogleフォームのようにURLを送るだけでリアルタイム自動集計！
         </p>
     </header>
+
+    <!-- RESPONDER SCREEN (Googleフォーム風 回答者専用画面) -->
+    <div id="responderScreen" class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-6 hidden">
+        <div class="border-b border-slate-100 pb-4">
+            <span class="text-xs font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">🌐 オンライン回答</span>
+            <h2 id="responderTitle" class="text-2xl font-extrabold text-slate-900 mt-2">アンケートへのご回答</h2>
+            <p class="text-xs text-slate-500 mt-1">各質問の選択肢を選んで「回答を送信する」を押してください</p>
+        </div>
+
+        <form id="responderForm" class="space-y-8">
+            <div id="responderQuestionsArea" class="space-y-8"></div>
+
+            <div class="pt-4 border-t border-slate-100">
+                <button id="submitOnlineAnswerBtn" type="button" class="w-full py-4 px-6 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl shadow-lg transition duration-150 flex items-center justify-center gap-2 text-base">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span>回答を送信する</span>
+                </button>
+            </div>
+        </form>
+
+        <!-- Thank you overlay after submission -->
+        <div id="thankYouMessage" class="hidden text-center py-12 space-y-4">
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-3xl">
+                ✓
+            </div>
+            <h3 class="text-2xl font-bold text-slate-800">ご回答ありがとうございました！</h3>
+            <p class="text-sm text-slate-500">回答が送信され、集計に自動反映されました。</p>
+        </div>
+    </div>
 
     <!-- SETUP / EDIT SCREEN -->
     <div id="setupScreen" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
                 <h2 id="setupHeaderTitle" class="text-xl font-bold text-slate-800">アンケート作成・編集</h2>
-                <p class="text-xs text-slate-500 mt-1">質問は1個から最大10個まで自由に追加・削除できます</p>
+                <p class="text-xs text-slate-500 mt-1">質問や選択肢を作成し、URLひとつで集計できます</p>
             </div>
             <!-- Edit status badge -->
             <div id="editingBadge" class="hidden items-center gap-2 bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full text-xs font-semibold border border-amber-200">
@@ -77,12 +106,12 @@
         <div class="pt-2">
             <button id="createSurveyButton" type="button" class="w-full py-3.5 px-6 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-xl shadow-md transition duration-150 flex items-center justify-center gap-2 text-base">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span id="startSurveyBtnText">アンケート投票を開始する</span>
+                <span id="startSurveyBtnText">アンケート画面を開く</span>
             </button>
         </div>
     </div>
 
-    <!-- VOTE SCREEN -->
+    <!-- VOTE SCREEN (ローカル確認・プレビュー) -->
     <div id="voteScreen" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-6 hidden">
         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
             <span id="questionCounter" class="text-xs font-semibold px-3 py-1 bg-blue-50 text-blue-600 rounded-full border border-blue-100"></span>
@@ -112,7 +141,14 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                     集計結果を見る
                 </button>
-                <button id="resetVotesButton" type="button" class="py-3 px-4 bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium rounded-xl text-sm transition border border-rose-200">投票リセット</button>
+                <button id="shareSurveyBtn" type="button" class="py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm shadow-sm transition flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                    URL/QRで共有
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3">
+                <button id="resetVotesButton" type="button" class="py-2.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium rounded-xl text-xs transition border border-rose-200">投票リセット</button>
             </div>
 
             <!-- Save Panel -->
@@ -133,21 +169,113 @@
 
     <!-- RESULT SCREEN -->
     <div id="resultScreen" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-6 hidden">
-        <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
+        <div class="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h2 class="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
                 📊 集計結果
             </h2>
-            <span id="totalVotesSummary" class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-semibold border border-indigo-100"></span>
+            <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1.5 text-xs text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg cursor-pointer">
+                    <input id="autoRefreshToggle" type="checkbox" class="rounded text-indigo-600 focus:ring-indigo-500">
+                    <span>自動更新(5秒毎)</span>
+                </label>
+                <span id="totalVotesSummary" class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full font-semibold border border-indigo-100"></span>
+            </div>
         </div>
 
         <div id="resultsArea" class="space-y-8"></div>
 
         <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100">
+            <button id="refreshResultsBtn" type="button" class="py-3 px-4 bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded-xl text-sm shadow-sm transition flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                最新状態に更新
+            </button>
             <button id="backToVoteButton" type="button" class="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm shadow-sm transition">投票画面に戻る</button>
             <button id="backToSetupFromResultButton" type="button" class="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-sm transition">トップに戻る</button>
         </div>
     </div>
 
+</div>
+
+<!-- SHARE MODAL (URL & QR & EMAIL) -->
+<div id="shareModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-5 transform transition-all max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                🔗 アンケートの配布・共有
+            </h3>
+            <button id="closeShareModalBtn" class="text-slate-400 hover:text-slate-600 font-bold p-1">✕</button>
+        </div>
+
+        <!-- Mode Tab Selector -->
+        <div class="flex bg-slate-100 p-1 rounded-xl gap-1">
+            <button id="tabOnlineBtn" type="button" class="flex-1 py-2 text-xs font-bold rounded-lg bg-white text-blue-700 shadow-xs transition">🌐 Googleフォーム風 (即時自動集計)</button>
+            <button id="tabEmailBtn" type="button" class="flex-1 py-2 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 transition">✉️ メール/チャット返信文</button>
+        </div>
+
+        <!-- ONLINE SHARE VIEW -->
+        <div id="onlineShareTab" class="space-y-4">
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 leading-relaxed space-y-1">
+                <p class="font-bold flex items-center gap-1">✨ 回答コード送信不要！</p>
+                <p>回答者はURLを開いて選択肢をタップするだけで、<b>自動的にリアルタイム集計</b>されます。</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">回答者専用URL</label>
+                <div class="flex gap-2">
+                    <input id="onlineUrlInput" type="text" readonly class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono focus:outline-none select-all text-slate-600">
+                    <button id="copyOnlineUrlBtn" type="button" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition whitespace-nowrap">URLをコピー</button>
+                </div>
+            </div>
+
+            <!-- QR CODE AREA -->
+            <div class="text-center pt-2 border-t border-slate-100 space-y-2">
+                <label class="block text-xs font-semibold text-slate-700">スマホ回答用 QRコード</label>
+                <div class="flex justify-center">
+                    <img id="qrCodeImage" class="w-40 h-40 border border-slate-200 rounded-xl p-2 bg-white shadow-sm" alt="回答URL QRコード" src="">
+                </div>
+                <p class="text-[11px] text-slate-400">対面や印刷物・スライド資料で回答を求める場合に便利です</p>
+            </div>
+        </div>
+
+        <!-- EMAIL SHARE VIEW -->
+        <div id="emailShareTab" class="space-y-4 hidden">
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 leading-relaxed space-y-1">
+                <p class="font-bold">✉️ オフライン・メール返信集計</p>
+<!-- SHARE MODAL (URL & QR) -->
+<div id="shareModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-5 transform transition-all max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                🔗 アンケートの配布・共有
+            </h3>
+            <button id="closeShareModalBtn" class="text-slate-400 hover:text-slate-600 font-bold p-1">✕</button>
+        </div>
+
+        <!-- ONLINE SHARE VIEW -->
+        <div class="space-y-4">
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 leading-relaxed space-y-1">
+                <p class="font-bold flex items-center gap-1">✨ URLを送るだけ！</p>
+                <p>回答者はURLを開いて選択肢をタップするだけで、<b>自動的にリアルタイム集計</b>されます。</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">回答者専用URL</label>
+                <div class="flex gap-2">
+                    <input id="onlineUrlInput" type="text" readonly class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono focus:outline-none select-all text-slate-600">
+                    <button id="copyOnlineUrlBtn" type="button" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition whitespace-nowrap">URLをコピー</button>
+                </div>
+            </div>
+
+            <!-- QR CODE AREA -->
+            <div class="text-center pt-2 border-t border-slate-100 space-y-2">
+                <label class="block text-xs font-semibold text-slate-700">スマホ回答用 QRコード</label>
+                <div class="flex justify-center">
+                    <img id="qrCodeImage" class="w-40 h-40 border border-slate-200 rounded-xl p-2 bg-white shadow-sm" alt="回答URL QRコード" src="">
+                </div>
+                <p class="text-[11px] text-slate-400">対面や印刷物・スライド資料で回答を求める場合に便利です</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- CUSTOM MODAL CONFIRM DIALOG -->
@@ -167,135 +295,404 @@
 
 <!-- JAVASCRIPT LOGIC -->
 <script>
-const MAX_QUESTIONS = 10;
-const MAX_CHOICES = 5;
-const DB_NAME = "survey-app-db";
+var MAX_QUESTIONS = 10;
+var MAX_CHOICES = 4;
+window.MAX_QUESTIONS = MAX_QUESTIONS;
+window.MAX_CHOICES = MAX_CHOICES;
+
+const DB_NAME = "SurveyAppDB";
 const DB_VERSION = 1;
 const SURVEY_STORE = "surveys";
-const APP_STATE_STORE = "appState";
-const DRAFT_KEY = "draftSurvey";
+const APP_STATE_STORE = "app_state";
+const DRAFT_KEY = "survey_draft";
 
-const emptySurveyData = () => ({
-    questions: [],
-    currentQuestionIndex: 0
-});
+// Public Cloud Endpoint for Google-Forms style synchronization
+const CLOUD_API_ENDPOINT = "https://keyvalue.immanuel.co/api/KeyVal";
+
+let dbPromise = null;
+let storageMode = "indexedDB";
+let editingSurveyId = null;
+let autoRefreshTimer = null;
+
+function emptySurveyData() {
+    return {
+        id: "survey_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9),
+        questions: [{ question: "", choices: [] }],
+        currentQuestionIndex: 0
+    };
+}
 
 let surveyData = emptySurveyData();
-let editingSurveyId = null; // Track current editing saved survey ID
-let storageMode = "memory";
-let dbPromise = null;
 
-// UI Helper: Toast message
+function showScreen(screenId) {
+    ["setupScreen", "voteScreen", "resultScreen", "responderScreen"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+            if (id === screenId) {
+                el.classList.remove("hidden");
+            } else {
+                el.classList.add("hidden");
+            }
+        }
+    });
+}
+
 function showToast(message, type = "info") {
     const container = document.getElementById("toastContainer");
+    if (!container) return;
     const toast = document.createElement("div");
-    
-    let bgColor = "bg-slate-800 text-white";
-    if (type === "success") bgColor = "bg-emerald-600 text-white";
-    if (type === "error") bgColor = "bg-rose-600 text-white";
-
-    toast.className = `${bgColor} px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center gap-2 max-w-xs`;
+    const bgColor = type === "error" ? "bg-rose-600" : type === "success" ? "bg-emerald-600" : "bg-slate-800";
+    toast.className = `${bgColor} text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-lg transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center gap-2`;
     toast.textContent = message;
-
     container.appendChild(toast);
-
     requestAnimationFrame(() => {
         toast.classList.remove("translate-y-2", "opacity-0");
     });
-
     setTimeout(() => {
         toast.classList.add("opacity-0", "translate-y-2");
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
 
-// UI Helper: Modal confirm dialog
 function customConfirm(message, title = "確認") {
     return new Promise((resolve) => {
         const overlay = document.getElementById("modalOverlay");
-        const modalTitle = document.getElementById("modalTitle");
-        const modalMessage = document.getElementById("modalMessage");
-        const cancelBtn = document.getElementById("modalCancelBtn");
+        const titleEl = document.getElementById("modalTitle");
+        const msgEl = document.getElementById("modalMessage");
         const confirmBtn = document.getElementById("modalConfirmBtn");
+        const cancelBtn = document.getElementById("modalCancelBtn");
 
-        modalTitle.textContent = title;
-        modalMessage.textContent = message;
+        if (!overlay || !titleEl || !msgEl || !confirmBtn || !cancelBtn) {
+            resolve(false);
+            return;
+        }
 
+        titleEl.textContent = title;
+        msgEl.textContent = message;
         overlay.classList.remove("hidden");
 
-        const cleanup = () => {
+        const cleanup = (value) => {
             overlay.classList.add("hidden");
-            cancelBtn.removeEventListener("click", onCancel);
             confirmBtn.removeEventListener("click", onConfirm);
+            cancelBtn.removeEventListener("click", onCancel);
+            resolve(value);
         };
 
-        const onCancel = () => {
-            cleanup();
-            resolve(false);
-        };
+        const onConfirm = () => cleanup(true);
+        const onCancel = () => cleanup(false);
 
-        const onConfirm = () => {
-            cleanup();
-            resolve(true);
-        };
-
-        cancelBtn.addEventListener("click", onCancel);
         confirmBtn.addEventListener("click", onConfirm);
+        cancelBtn.addEventListener("click", onCancel);
     });
 }
 
-// Screen display switcher helper
-function showScreen(screenId) {
-    document.getElementById("setupScreen").classList.add("hidden");
-    document.getElementById("voteScreen").classList.add("hidden");
-    document.getElementById("resultScreen").classList.add("hidden");
+// ----------------------------------------------------
+// Cloud Sync Logic for Google Forms Style Experience
+// ----------------------------------------------------
 
-    const target = document.getElementById(screenId);
-    if (target) {
-        target.classList.remove("hidden");
-        window.scrollTo({ top: 0, behavior: "smooth" });
+async function syncSurveyToCloud(surveyObj) {
+    if (!surveyObj || !surveyObj.id) return;
+    try {
+        const payloadStr = encodeURIComponent(JSON.stringify(surveyObj));
+        // Push payload to public KV
+        await fetch(`${CLOUD_API_ENDPOINT}/UpdateValue/survey_app_key_${surveyObj.id}/${payloadStr}`, {
+            method: "POST"
+        });
+    } catch (e) {
+        console.warn("Cloud sync warning:", e);
     }
 }
 
-function getLocalStorageSafe() {
+async function fetchSurveyFromCloud(surveyId) {
     try {
-        return window.localStorage;
-    } catch (error) {
+        const res = await fetch(`${CLOUD_API_ENDPOINT}/GetValue/survey_app_key_${surveyId}`);
+        if (!res.ok) return null;
+        const rawText = await res.text();
+        if (!rawText || rawText === "null" || rawText === '""') return null;
+        
+        let cleaned = rawText;
+        if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+            cleaned = cleaned.substring(1, cleaned.length - 1);
+        }
+        const decoded = decodeURIComponent(cleaned);
+        return JSON.parse(decoded);
+    } catch (e) {
+        console.warn("Fetch cloud data failed:", e);
         return null;
     }
 }
 
-function openDatabase() {
-    if (!("indexedDB" in window)) {
-        return Promise.reject(new Error("IndexedDB is not supported"));
+// ----------------------------------------------------
+// Generate Responder Online URL & Share Setup
+// ----------------------------------------------------
+
+function getOnlineResponderUrl() {
+    const baseUrl = window.location.origin + window.location.pathname;
+    return `${baseUrl}?sid=${surveyData.id}`;
+}
+
+function openShareModal() {
+    if (!surveyData || !surveyData.questions || surveyData.questions.length === 0) {
+        showToast("共有できるアンケートデータがありません", "error");
+        return;
     }
 
+    // Save/Sync to cloud first
+    void syncSurveyToCloud(surveyData);
+
+    const onlineUrl = getOnlineResponderUrl();
+    const urlInput = document.getElementById("onlineUrlInput");
+    urlInput.value = onlineUrl;
+
+    // QR Code Image
+    const qrImg = document.getElementById("qrCodeImage");
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(onlineUrl)}`;
+
+    document.getElementById("shareModal").classList.remove("hidden");
+}
+
+function closeShareModal() {
+    document.getElementById("shareModal").classList.add("hidden");
+}
+
+function copyOnlineUrl() {
+    const input = document.getElementById("onlineUrlInput");
+    input.select();
+    try {
+        document.execCommand("copy");
+        showToast("オンライン回答用URLをコピーしました！", "success");
+    } catch (err) {
+        showToast("コピーに失敗しました", "error");
+    }
+}
+
+// ----------------------------------------------------
+// Google-Forms style Responder Screen Render Logic
+// ----------------------------------------------------
+
+async function setupResponderMode(surveyId) {
+    showToast("アンケートデータを取得中...", "info");
+    let cloudData = await fetchSurveyFromCloud(surveyId);
+    
+    if (!cloudData) {
+        const draft = await readAppState(DRAFT_KEY);
+        if (draft && draft.id === surveyId) {
+            cloudData = draft;
+        }
+    }
+
+    if (!cloudData || !cloudData.questions) {
+        showToast("アンケートが見つかりませんでした", "error");
+        return;
+    }
+
+    surveyData = cloudData;
+    showScreen("responderScreen");
+
+    document.getElementById("responderTitle").textContent = "アンケートご回答";
+    const area = document.getElementById("responderQuestionsArea");
+    area.textContent = "";
+
+    surveyData.questions.forEach((q, qIdx) => {
+        const card = document.createElement("div");
+        card.className = "bg-slate-50 p-5 rounded-2xl border border-slate-200/80 space-y-4";
+
+        const title = document.createElement("h3");
+        title.className = "font-bold text-slate-800 text-base flex items-center gap-2";
+        title.innerHTML = `<span class="w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-xs font-extrabold shrink-0">${qIdx + 1}</span> ${q.question}`;
+        card.appendChild(title);
+
+        const choicesGroup = document.createElement("div");
+        choicesGroup.className = "space-y-2.5";
+
+        q.choices.forEach((c, cIdx) => {
+            const choiceLabel = document.createElement("label");
+            choiceLabel.className = "flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/30 transition shadow-2xs";
+
+            const radio = document.createElement("input");
+            radio.type = "radio";
+            radio.name = `responder_q_${qIdx}`;
+            radio.value = cIdx;
+            if (cIdx === 0) radio.checked = true;
+            radio.className = "w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300";
+
+            const choiceText = document.createElement("span");
+            choiceText.className = "text-sm font-semibold text-slate-700 flex-1";
+            choiceText.textContent = c.text;
+
+            choiceLabel.appendChild(radio);
+            choiceLabel.appendChild(choiceText);
+
+            if (c.image) {
+                const img = document.createElement("img");
+                img.className = "w-12 h-12 object-cover rounded-lg border border-slate-100";
+                img.src = c.image;
+                choiceLabel.appendChild(img);
+            }
+
+            choicesGroup.appendChild(choiceLabel);
+        });
+
+        card.appendChild(choicesGroup);
+        area.appendChild(card);
+    });
+}
+
+async function submitOnlineAnswer() {
+    const btn = document.getElementById("submitOnlineAnswerBtn");
+    btn.disabled = true;
+    btn.classList.add("opacity-50");
+
+    try {
+        // Fetch latest state to aggregate votes
+        let latest = await fetchSurveyFromCloud(surveyData.id);
+        if (!latest) latest = surveyData;
+
+        surveyData.questions.forEach((q, qIdx) => {
+            const selectedRadio = document.querySelector(`input[name="responder_q_${qIdx}"]:checked`);
+            if (selectedRadio) {
+                const chosenIdx = parseInt(selectedRadio.value, 10);
+                if (latest.questions[qIdx] && latest.questions[qIdx].votes) {
+                    latest.questions[qIdx].votes[chosenIdx] = (latest.questions[qIdx].votes[chosenIdx] || 0) + 1;
+                }
+            }
+        });
+
+        await syncSurveyToCloud(latest);
+        surveyData = latest;
+        await saveData();
+
+        document.getElementById("responderForm").classList.add("hidden");
+        document.getElementById("thankYouMessage").classList.remove("hidden");
+        showToast("ご回答ありがとうございました！", "success");
+    } catch (e) {
+        showToast("送信に失敗しました。もう一度お試しください。", "error");
+        btn.disabled = false;
+        btn.classList.remove("opacity-50");
+    }
+}
+
+// ----------------------------------------------------
+// Import Answers & Dialog logic
+// ----------------------------------------------------
+
+function openImportModal() {
+    document.getElementById("importAnswersInput").value = "";
+    document.getElementById("importModal").classList.remove("hidden");
+}
+
+function closeImportModal() {
+    document.getElementById("importModal").classList.add("hidden");
+}
+
+async function processImportAnswers() {
+    const rawText = document.getElementById("importAnswersInput").value;
+    if (!rawText.trim()) {
+        showToast("返信本文を貼り付けてください", "error");
+        return;
+    }
+
+    const ansRegex = /(?:ANS:?|回答:?)\s*([^\r\n]+)/gi;
+    let match;
+    let successCount = 0;
+
+    const parsePairs = (pairsStr) => {
+        const pairs = pairsStr.split(/[,;\s]+/);
+        const tempVotes = [];
+
+        pairs.forEach((pair) => {
+            if (!pair) return;
+            const parts = pair.split(/[:=]/);
+            if (parts.length === 2) {
+                const qNumStr = parts[0].replace(/[^0-9]/g, "");
+                const choiceNumStr = parts[1].replace(/[^0-9]/g, "");
+
+                if (qNumStr && choiceNumStr) {
+                    const qIndex = parseInt(qNumStr, 10) - 1;
+                    const cIndex = parseInt(choiceNumStr, 10) - 1;
+
+                    if (
+                        qIndex >= 0 &&
+                        qIndex < surveyData.questions.length &&
+                        cIndex >= 0 &&
+                        cIndex < surveyData.questions[qIndex].choices.length
+                    ) {
+                        tempVotes.push({ qIndex, cIndex });
+                    }
+                }
+            }
+        });
+        return tempVotes;
+    };
+
+    while ((match = ansRegex.exec(rawText)) !== null) {
+        const votes = parsePairs(match[1]);
+        if (votes.length > 0) {
+            votes.forEach(({ qIndex, cIndex }) => {
+                surveyData.questions[qIndex].votes[cIndex] += 1;
+            });
+            successCount += 1;
+        }
+    }
+
+    if (successCount === 0) {
+        const lines = rawText.split("\n");
+        lines.forEach(line => {
+            const votes = parsePairs(line);
+            if (votes.length === surveyData.questions.length) {
+                votes.forEach(({ qIndex, cIndex }) => {
+                    surveyData.questions[qIndex].votes[cIndex] += 1;
+                });
+                successCount += 1;
+            }
+        });
+    }
+
+    if (successCount > 0) {
+        await saveData();
+        closeImportModal();
+        showToast(`${successCount}人分の回答を集計に反映しました！`, "success");
+
+        const resultScreen = document.getElementById("resultScreen");
+        if (!resultScreen.classList.contains("hidden")) {
+            showResults();
+        } else {
+            renderCurrentQuestion();
+        }
+    } else {
+        showToast("有効な回答コードが見つかりませんでした", "error");
+    }
+}
+
+// ----------------------------------------------------
+// DB & Local Storage Handler
+// ----------------------------------------------------
+
+function getLocalStorageSafe() {
+    try { return window.localStorage; } catch (error) { return null; }
+}
+
+function openDatabase() {
+    if (!("indexedDB" in window)) return Promise.reject(new Error("No IndexedDB"));
     if (dbPromise) return dbPromise;
 
     dbPromise = new Promise((resolve, reject) => {
         const request = window.indexedDB.open(DB_NAME, DB_VERSION);
-
         request.onupgradeneeded = () => {
             const db = request.result;
-            if (!db.objectStoreNames.contains(SURVEY_STORE)) {
-                db.createObjectStore(SURVEY_STORE, { keyPath: "id" });
-            }
-            if (!db.objectStoreNames.contains(APP_STATE_STORE)) {
-                db.createObjectStore(APP_STATE_STORE, { keyPath: "key" });
-            }
+            if (!db.objectStoreNames.contains(SURVEY_STORE)) db.createObjectStore(SURVEY_STORE, { keyPath: "id" });
+            if (!db.objectStoreNames.contains(APP_STATE_STORE)) db.createObjectStore(APP_STATE_STORE, { keyPath: "key" });
         };
-
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error || new Error("IndexedDB open failed"));
+        request.onerror = () => reject(request.error || new Error("IndexedDB error"));
     });
-
     return dbPromise;
 }
 
 function requestToPromise(request) {
     return new Promise((resolve, reject) => {
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error || new Error("Database request failed"));
+        request.onerror = () => reject(request.error);
     });
 }
 
@@ -320,24 +717,14 @@ function fileToDataUrl(file) {
 }
 
 async function convertHeicToDataUrl(file) {
-    if (typeof heic2any !== "function") {
-        throw new Error("HEIC変換ライブラリを読み込めませんでした");
-    }
-
-    const convertedBlob = await heic2any({
-        blob: file,
-        toType: "image/jpeg",
-        quality: 0.85
-    });
-
+    if (typeof heic2any !== "function") throw new Error("HEIC変換ライブラリを読み込めませんでした");
+    const convertedBlob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
     const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
     return fileToDataUrl(blob);
 }
 
 function normalizeChoice(choice) {
-    if (typeof choice === "string") {
-        return { text: choice, image: "" };
-    }
+    if (typeof choice === "string") return { text: choice, image: "" };
     if (!choice || typeof choice.text !== "string") return null;
     return {
         text: choice.text,
@@ -345,18 +732,12 @@ function normalizeChoice(choice) {
     };
 }
 
-// Storage Initialization
 async function initializeStorage() {
     try {
         await openDatabase();
         storageMode = "indexedDB";
     } catch (error) {
-        const localStorageRef = getLocalStorageSafe();
-        if (localStorageRef) {
-            storageMode = "localStorage";
-        } else {
-            storageMode = "memory";
-        }
+        storageMode = getLocalStorageSafe() ? "localStorage" : "memory";
     }
 }
 
@@ -364,14 +745,12 @@ async function readAppState(key) {
     if (storageMode === "indexedDB") {
         const db = await openDatabase();
         const tx = db.transaction(APP_STATE_STORE, "readonly");
-        const store = tx.objectStore(APP_STATE_STORE);
-        const result = await requestToPromise(store.get(key));
+        const result = await requestToPromise(tx.objectStore(APP_STATE_STORE).get(key));
         return result ? result.value : null;
     }
     if (storageMode === "localStorage") {
         const storage = getLocalStorageSafe();
-        if (!storage) return null;
-        const raw = storage.getItem(key);
+        const raw = storage ? storage.getItem(key) : null;
         return raw ? JSON.parse(raw) : null;
     }
     return null;
@@ -381,45 +760,25 @@ async function writeAppState(key, value) {
     if (storageMode === "indexedDB") {
         const db = await openDatabase();
         const tx = db.transaction(APP_STATE_STORE, "readwrite");
-        const store = tx.objectStore(APP_STATE_STORE);
-        await requestToPromise(store.put({ key, value }));
+        await requestToPromise(tx.objectStore(APP_STATE_STORE).put({ key, value }));
         return;
     }
     if (storageMode === "localStorage") {
         const storage = getLocalStorageSafe();
-        if (!storage) return;
-        storage.setItem(key, JSON.stringify(value));
+        if (storage) storage.setItem(key, JSON.stringify(value));
     }
 }
 
-async function removeAppState(key) {
-    if (storageMode === "indexedDB") {
-        const db = await openDatabase();
-        const tx = db.transaction(APP_STATE_STORE, "readwrite");
-        const store = tx.objectStore(APP_STATE_STORE);
-        await requestToPromise(store.delete(key));
-        return;
-    }
-    if (storageMode === "localStorage") {
-        const storage = getLocalStorageSafe();
-        if (!storage) return;
-        storage.removeItem(key);
-    }
-}
-
-// Saved Surveys Storage API
 async function listSavedSurveys() {
     if (storageMode === "indexedDB") {
         const db = await openDatabase();
         const tx = db.transaction(SURVEY_STORE, "readonly");
-        const store = tx.objectStore(SURVEY_STORE);
-        const items = await requestToPromise(store.getAll());
+        const items = await requestToPromise(tx.objectStore(SURVEY_STORE).getAll());
         return items.sort((a, b) => b.savedAt - a.savedAt);
     }
     if (storageMode === "localStorage") {
         const storage = getLocalStorageSafe();
-        if (!storage) return [];
-        const raw = storage.getItem("savedSurveys");
+        const raw = storage ? storage.getItem("savedSurveys") : null;
         const items = raw ? JSON.parse(raw) : [];
         return Array.isArray(items) ? items.sort((a, b) => b.savedAt - a.savedAt) : [];
     }
@@ -427,14 +786,13 @@ async function listSavedSurveys() {
 }
 
 async function persistSavedSurveys(items) {
-    if (storageMode !== "localStorage") return;
     const storage = getLocalStorageSafe();
-    if (!storage) return;
-    storage.setItem("savedSurveys", JSON.stringify(items));
+    if (storage) storage.setItem("savedSurveys", JSON.stringify(items));
 }
 
 async function saveNamedSurvey(name, targetId = null) {
-    const id = targetId || ("survey-" + Date.now() + "-" + Math.random().toString(16).slice(2));
+    const id = targetId || ("survey_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9));
+    surveyData.id = id;
     const payload = {
         id,
         name,
@@ -445,22 +803,15 @@ async function saveNamedSurvey(name, targetId = null) {
     if (storageMode === "indexedDB") {
         const db = await openDatabase();
         const tx = db.transaction(SURVEY_STORE, "readwrite");
-        const store = tx.objectStore(SURVEY_STORE);
-        await requestToPromise(store.put(payload));
-        return id;
-    }
-
-    if (storageMode === "localStorage") {
+        await requestToPromise(tx.objectStore(SURVEY_STORE).put(payload));
+    } else if (storageMode === "localStorage") {
         const items = await listSavedSurveys();
         const idx = items.findIndex((i) => i.id === id);
-        if (idx >= 0) {
-            items[idx] = payload;
-        } else {
-            items.push(payload);
-        }
+        if (idx >= 0) items[idx] = payload; else items.push(payload);
         await persistSavedSurveys(items);
-        return id;
     }
+
+    void syncSurveyToCloud(surveyData);
     return id;
 }
 
@@ -468,8 +819,7 @@ async function loadNamedSurvey(id) {
     if (storageMode === "indexedDB") {
         const db = await openDatabase();
         const tx = db.transaction(SURVEY_STORE, "readonly");
-        const store = tx.objectStore(SURVEY_STORE);
-        return requestToPromise(store.get(id));
+        return requestToPromise(tx.objectStore(SURVEY_STORE).get(id));
     }
     if (storageMode === "localStorage") {
         const items = await listSavedSurveys();
@@ -482,11 +832,8 @@ async function deleteNamedSurvey(id) {
     if (storageMode === "indexedDB") {
         const db = await openDatabase();
         const tx = db.transaction(SURVEY_STORE, "readwrite");
-        const store = tx.objectStore(SURVEY_STORE);
-        await requestToPromise(store.delete(id));
-        return;
-    }
-    if (storageMode === "localStorage") {
+        await requestToPromise(tx.objectStore(SURVEY_STORE).delete(id));
+    } else if (storageMode === "localStorage") {
         const items = await listSavedSurveys();
         const filtered = items.filter((item) => item.id !== id);
         await persistSavedSurveys(filtered);
@@ -497,21 +844,22 @@ async function saveData() {
     if (storageMode === "memory") return;
     try {
         await writeAppState(DRAFT_KEY, surveyData);
+        void syncSurveyToCloud(surveyData);
     } catch (error) {
         console.error("保存失敗", error);
     }
 }
 
-// Data validation and normalization
 function isValidSurveyData(data) {
+    const maxChoices = window.MAX_CHOICES || 4;
+    const maxQuestions = window.MAX_QUESTIONS || 10;
     if (!data || !Array.isArray(data.questions)) return false;
-    if (typeof data.currentQuestionIndex !== "number" || !Number.isInteger(data.currentQuestionIndex)) return false;
-    if (data.questions.length === 0 || data.questions.length > MAX_QUESTIONS) return false;
+    if (data.questions.length === 0 || data.questions.length > maxQuestions) return false;
 
     return data.questions.every((item) => {
         if (!item || typeof item.question !== "string") return false;
         if (!Array.isArray(item.choices) || !Array.isArray(item.votes)) return false;
-        if (item.choices.length < 2 || item.choices.length > MAX_CHOICES) return false;
+        if (item.choices.length < 2 || item.choices.length > maxChoices) return false;
         return item.choices.every((choice) => normalizeChoice(choice) !== null);
     });
 }
@@ -519,12 +867,11 @@ function isValidSurveyData(data) {
 function normalizeSurveyData(data) {
     if (!isValidSurveyData(data)) return null;
     return {
+        id: data.id || ("survey_" + Date.now()),
         questions: data.questions.map((item) => {
             const choices = item.choices.map((choice) => normalizeChoice(choice));
             let votes = Array.isArray(item.votes) ? [...item.votes] : [];
-            if (votes.length !== choices.length) {
-                votes = new Array(choices.length).fill(0);
-            }
+            if (votes.length !== choices.length) votes = new Array(choices.length).fill(0);
             return {
                 question: item.question,
                 choices: choices,
@@ -535,31 +882,30 @@ function normalizeSurveyData(data) {
     };
 }
 
+// ----------------------------------------------------
+// UI Render - Setup Form & Saved Surveys
+// ----------------------------------------------------
+
 function getSetupFormData() {
     const blocks = document.querySelectorAll(".questionBlock");
     const questionsList = [];
+    const maxChoices = window.MAX_CHOICES || 4;
 
     blocks.forEach((block) => {
         const questionInput = block.querySelector(".questionInput");
         const questionText = questionInput ? questionInput.value : "";
 
         const choices = [];
-        for (let choiceIndex = 0; choiceIndex < MAX_CHOICES; choiceIndex += 1) {
+        for (let choiceIndex = 0; choiceIndex < maxChoices; choiceIndex += 1) {
             const choiceInput = block.querySelector(`.choiceInput[data-choice-index="${choiceIndex}"]`);
             const imageInput = block.querySelector(`.choiceImageInput[data-choice-index="${choiceIndex}"]`);
             const value = choiceInput ? choiceInput.value : "";
             const image = imageInput && typeof imageInput.dataset.imageData === "string" ? imageInput.dataset.imageData : "";
 
-            choices.push({
-                text: value,
-                image: image
-            });
+            choices.push({ text: value, image: image });
         }
 
-        questionsList.push({
-            question: questionText,
-            choices: choices
-        });
+        questionsList.push({ question: questionText, choices: choices });
     });
 
     return questionsList;
@@ -568,12 +914,13 @@ function getSetupFormData() {
 function renderSetupInputs(dataToPrefill = null) {
     const area = document.getElementById("questionFormArea");
     area.textContent = "";
+    const maxChoices = window.MAX_CHOICES || 4;
+    const maxQuestions = window.MAX_QUESTIONS || 10;
 
     let questionsList = [];
     if (dataToPrefill && Array.isArray(dataToPrefill.questions) && dataToPrefill.questions.length > 0) {
         questionsList = dataToPrefill.questions;
     } else {
-        // デフォルトは1件
         questionsList = [{ question: "", choices: [] }];
     }
 
@@ -592,22 +939,12 @@ function renderSetupInputs(dataToPrefill = null) {
         const rightControls = document.createElement("div");
         rightControls.className = "flex items-center gap-2";
 
-        if (questionIndex >= 1) {
-            const optionalTag = document.createElement("span");
-            optionalTag.className = "text-[10px] uppercase font-semibold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded";
-            optionalTag.textContent = "追加質問";
-            rightControls.appendChild(optionalTag);
-        }
-
-        // Delete question button
         if (questionsList.length > 1) {
             const deleteQBtn = document.createElement("button");
             deleteQBtn.type = "button";
-            deleteQBtn.className = "text-xs text-rose-600 hover:text-rose-800 font-medium hover:bg-rose-50 px-2.5 py-1 rounded-md transition flex items-center gap-1 border border-rose-200";
-            deleteQBtn.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> 質問を削除`;
-            deleteQBtn.addEventListener("click", () => {
-                removeQuestionAt(questionIndex);
-            });
+            deleteQBtn.className = "text-xs text-rose-600 hover:text-rose-800 font-medium hover:bg-rose-50 px-2 py-1 rounded transition border border-rose-200";
+            deleteQBtn.textContent = "質問削除";
+            deleteQBtn.addEventListener("click", () => removeQuestionAt(questionIndex));
             rightControls.appendChild(deleteQBtn);
         }
 
@@ -616,15 +953,14 @@ function renderSetupInputs(dataToPrefill = null) {
 
         const questionInput = document.createElement("input");
         questionInput.className = "questionInput w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium";
-        questionInput.placeholder = `質問文を入力 (例: お気に入りの季節は？)`;
+        questionInput.placeholder = `質問文を入力 (例: お気に入りのテーマは？)`;
         questionInput.value = existingQ ? existingQ.question : "";
-        questionInput.setAttribute("data-question-index", String(questionIndex));
         block.appendChild(questionInput);
 
         const choicesContainer = document.createElement("div");
         choicesContainer.className = "space-y-3 pt-1";
 
-        for (let choiceIndex = 0; choiceIndex < MAX_CHOICES; choiceIndex += 1) {
+        for (let choiceIndex = 0; choiceIndex < maxChoices; choiceIndex += 1) {
             const existingChoice = existingQ && existingQ.choices && existingQ.choices[choiceIndex] ? existingQ.choices[choiceIndex] : null;
 
             const choiceGroup = document.createElement("div");
@@ -639,7 +975,6 @@ function renderSetupInputs(dataToPrefill = null) {
             choiceInput.className = "choiceInput w-full px-3 py-2 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500";
             choiceInput.placeholder = `選択肢のテキストを入力`;
             choiceInput.value = existingChoice ? existingChoice.text : "";
-            choiceInput.setAttribute("data-question-index", String(questionIndex));
             choiceInput.setAttribute("data-choice-index", String(choiceIndex));
             choiceGroup.appendChild(choiceInput);
 
@@ -650,7 +985,6 @@ function renderSetupInputs(dataToPrefill = null) {
             imageInput.type = "file";
             imageInput.accept = "image/*";
             imageInput.className = "choiceImageInput text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer";
-            imageInput.setAttribute("data-question-index", String(questionIndex));
             imageInput.setAttribute("data-choice-index", String(choiceIndex));
             if (existingChoice && existingChoice.image) {
                 imageInput.dataset.imageData = existingChoice.image;
@@ -661,37 +995,18 @@ function renderSetupInputs(dataToPrefill = null) {
 
             const preview = document.createElement("img");
             preview.className = `choiceImagePreview max-h-36 object-contain rounded-lg border border-slate-200 bg-slate-50 mt-2 ${existingChoice && existingChoice.image ? "" : "hidden"}`;
-            if (existingChoice && existingChoice.image) {
-                preview.src = existingChoice.image;
-            }
-            preview.alt = "選択肢画像プレビュー";
+            if (existingChoice && existingChoice.image) preview.src = existingChoice.image;
             choiceGroup.appendChild(preview);
 
-            imageInput.addEventListener("change", () => {
-                void handleChoiceImageChange(imageInput, preview);
-            });
-
+            imageInput.addEventListener("change", () => handleChoiceImageChange(imageInput, preview));
             choicesContainer.appendChild(choiceGroup);
         }
 
         block.appendChild(choicesContainer);
         area.appendChild(block);
     });
-
-    // Update Add Question Button state
-    const addQuestionBtn = document.getElementById("addQuestionBtn");
-    if (addQuestionBtn) {
-        if (questionsList.length >= MAX_QUESTIONS) {
-            addQuestionBtn.disabled = true;
-            addQuestionBtn.classList.add("opacity-50", "cursor-not-allowed");
-        } else {
-            addQuestionBtn.disabled = false;
-            addQuestionBtn.classList.remove("opacity-50", "cursor-not-allowed");
-        }
-    }
 }
 
-// Image upload preview handler
 async function handleChoiceImageChange(input, preview) {
     const file = input.files && input.files[0];
     if (!file) {
@@ -701,59 +1016,34 @@ async function handleChoiceImageChange(input, preview) {
         return;
     }
 
-    if (!file.type.startsWith("image/") && !isHeicFile(file)) {
-        input.value = "";
-        input.dataset.imageData = "";
-        preview.src = "";
-        preview.classList.add("hidden");
-        showToast("画像ファイルを選択してください", "error");
-        return;
-    }
-
     try {
-        showToast("画像を読み込み中...", "info");
-        const dataUrl = isHeicFile(file)
-            ? await convertHeicToDataUrl(file)
-            : await fileToDataUrl(file);
-
+        const dataUrl = isHeicFile(file) ? await convertHeicToDataUrl(file) : await fileToDataUrl(file);
         input.dataset.imageData = dataUrl;
         preview.src = dataUrl;
         preview.classList.remove("hidden");
         showToast("画像を読み込みました", "success");
     } catch (error) {
-        input.value = "";
-        input.dataset.imageData = "";
-        preview.src = "";
-        preview.classList.add("hidden");
-        showToast(error.message || "画像の読み込みに失敗しました", "error");
+        showToast("画像の読み込みに失敗しました", "error");
     }
 }
 
 function addQuestion() {
     const currentQuestions = getSetupFormData();
-    if (currentQuestions.length >= MAX_QUESTIONS) {
-        showToast(`質問は最大${MAX_QUESTIONS}個までです`, "error");
+    if (currentQuestions.length >= (window.MAX_QUESTIONS || 10)) {
+        showToast("質問数の上限です", "error");
         return;
     }
-
     currentQuestions.push({ question: "", choices: [] });
     renderSetupInputs({ questions: currentQuestions });
-    showToast("質問を追加しました", "info");
 }
 
 function removeQuestionAt(index) {
     const currentQuestions = getSetupFormData();
-    if (currentQuestions.length <= 1) {
-        showToast("質問は最低1個必要です", "error");
-        return;
-    }
-
+    if (currentQuestions.length <= 1) return;
     currentQuestions.splice(index, 1);
     renderSetupInputs({ questions: currentQuestions });
-    showToast(`質問 ${index + 1} を削除しました`, "info");
 }
 
-// Editing state UI updater
 function updateEditingStateUI(surveyName = null) {
     const badge = document.getElementById("editingBadge");
     const badgeText = document.getElementById("editingBadgeText");
@@ -762,19 +1052,19 @@ function updateEditingStateUI(surveyName = null) {
     if (editingSurveyId && surveyName) {
         badge.classList.remove("hidden");
         badge.classList.add("flex");
-        badgeText.textContent = `✏️ 編集モード: 「${surveyName}」`;
-        startBtnText.textContent = "編集後の内容で投票を開始する";
+        badgeText.textContent = `✏️ 編集: 「${surveyName}」`;
+        startBtnText.textContent = "変更を反映してアンケートを開く";
     } else {
         badge.classList.add("hidden");
         badge.classList.remove("flex");
-        startBtnText.textContent = "アンケート投票を開始する";
+        startBtnText.textContent = "アンケート画面を開く";
     }
 }
 
-// Create or update survey logic from setup screen
 async function createSurvey() {
     const blocks = document.querySelectorAll(".questionBlock");
     const questions = [];
+    const maxChoices = window.MAX_CHOICES || 4;
 
     blocks.forEach((block, questionIndex) => {
         const questionInput = block.querySelector(".questionInput");
@@ -782,65 +1072,43 @@ async function createSurvey() {
         if (question === "") return;
 
         const choices = [];
-
-        for (let choiceIndex = 0; choiceIndex < MAX_CHOICES; choiceIndex += 1) {
+        for (let choiceIndex = 0; choiceIndex < maxChoices; choiceIndex += 1) {
             const choiceInput = block.querySelector(`.choiceInput[data-choice-index="${choiceIndex}"]`);
             const imageInput = block.querySelector(`.choiceImageInput[data-choice-index="${choiceIndex}"]`);
             const value = choiceInput ? choiceInput.value.trim() : "";
-            const image = imageInput && typeof imageInput.dataset.imageData === "string"
-                ? imageInput.dataset.imageData
-                : "";
+            const image = imageInput && typeof imageInput.dataset.imageData === "string" ? imageInput.dataset.imageData : "";
 
             if (value !== "" || image !== "") {
-                choices.push({
-                    text: value !== "" ? value : "画像の選択肢",
-                    image
-                });
+                choices.push({ text: value !== "" ? value : "選択肢", image });
             }
         }
 
         if (choices.length < 2) {
-            throw new Error(`質問 ${questionIndex + 1} は選択肢を2つ以上入力してください`);
+            throw new Error(`質問 ${questionIndex + 1} には選択肢を2個以上設定してください`);
         }
 
-        // Preserve vote counts if modifying matching question
         let existingVotes = new Array(choices.length).fill(0);
         if (editingSurveyId && surveyData.questions[questionIndex]) {
             const prevQ = surveyData.questions[questionIndex];
-            if (prevQ.choices.length === choices.length) {
-                existingVotes = [...prevQ.votes];
-            }
+            if (prevQ.choices.length === choices.length) existingVotes = [...prevQ.votes];
         }
 
-        questions.push({
-            question,
-            choices,
-            votes: existingVotes
-        });
+        questions.push({ question, choices, votes: existingVotes });
     });
 
     if (questions.length === 0) {
-        showToast("少なくとも1つは質問文を入力してください", "error");
+        showToast("質問文を入力してください", "error");
         return;
     }
 
     surveyData = {
+        id: surveyData.id || ("survey_" + Date.now()),
         questions,
         currentQuestionIndex: 0
     };
 
     await saveData();
     startVoteScreen();
-}
-
-function formatSavedAt(timestamp) {
-    const date = new Date(timestamp);
-    return date.toLocaleString("ja-JP", {
-        month: "numeric",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
-    });
 }
 
 async function renderSavedSurveys() {
@@ -858,96 +1126,47 @@ async function renderSavedSurveys() {
 
     items.forEach((item) => {
         const wrapper = document.createElement("div");
-        wrapper.className = "p-3 bg-white rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm hover:border-slate-300 transition";
+        wrapper.className = "p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-3 shadow-xs";
 
         const info = document.createElement("div");
-        info.className = "space-y-0.5";
-
         const title = document.createElement("div");
-        title.className = "font-bold text-slate-800 text-sm";
+        title.className = "font-bold text-slate-800 text-xs";
         title.textContent = item.name;
         info.appendChild(title);
-
-        const meta = document.createElement("div");
-        meta.className = "text-[11px] text-slate-400 flex items-center gap-2";
-        meta.textContent = `${item.data.questions.length}件の質問 ・ 保存日: ${formatSavedAt(item.savedAt)}`;
-        info.appendChild(meta);
 
         wrapper.appendChild(info);
 
         const buttons = document.createElement("div");
-        buttons.className = "flex items-center gap-1.5 shrink-0";
+        buttons.className = "flex items-center gap-1.5";
 
-        // "開く（投票）" Button
         const openBtn = document.createElement("button");
-        openBtn.type = "button";
-        openBtn.className = "px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs transition shadow-sm";
-        openBtn.textContent = "投票する";
+        openBtn.className = "px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs transition";
+        openBtn.textContent = "開く";
         openBtn.addEventListener("click", async () => {
-            try {
-                const saved = await loadNamedSurvey(item.id);
-                const normalized = saved ? normalizeSurveyData(saved.data) : null;
-                if (!normalized) {
-                    showToast("保存データを読み込めませんでした", "error");
-                    return;
-                }
-
-                surveyData = normalized;
+            const saved = await loadNamedSurvey(item.id);
+            if (saved) {
+                surveyData = saved.data;
                 editingSurveyId = item.id;
                 await saveData();
                 startVoteScreen();
-                showToast(`「${item.name}」の投票画面を開きました`, "success");
-            } catch (err) {
-                showToast("開く処理に失敗しました", "error");
             }
         });
         buttons.appendChild(openBtn);
 
-        // "編集" Button
         const editBtn = document.createElement("button");
-        editBtn.type = "button";
-        editBtn.className = "px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition border border-slate-200";
+        editBtn.className = "px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs border border-slate-200";
         editBtn.textContent = "編集";
         editBtn.addEventListener("click", async () => {
-            try {
-                const saved = await loadNamedSurvey(item.id);
-                const normalized = saved ? normalizeSurveyData(saved.data) : null;
-                if (!normalized) {
-                    showToast("保存データを読み込めませんでした", "error");
-                    return;
-                }
-
-                surveyData = normalized;
+            const saved = await loadNamedSurvey(item.id);
+            if (saved) {
+                surveyData = saved.data;
                 editingSurveyId = item.id;
                 updateEditingStateUI(item.name);
                 renderSetupInputs(surveyData);
                 showScreen("setupScreen");
-                showToast(`「${item.name}」の編集モードに入りました`, "info");
-            } catch (err) {
-                showToast("編集データの読み込みに失敗しました", "error");
             }
         });
         buttons.appendChild(editBtn);
-
-        // "削除" Button
-        const deleteBtn = document.createElement("button");
-        deleteBtn.type = "button";
-        deleteBtn.className = "p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition";
-        deleteBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>`;
-        deleteBtn.title = "削除";
-        deleteBtn.addEventListener("click", async () => {
-            const confirmed = await customConfirm(`保存アンケート「${item.name}」を削除してもよろしいですか？`, "アンケートの削除");
-            if (!confirmed) return;
-
-            await deleteNamedSurvey(item.id);
-            if (editingSurveyId === item.id) {
-                editingSurveyId = null;
-                updateEditingStateUI(null);
-            }
-            await renderSavedSurveys();
-            showToast("アンケートを削除しました", "info");
-        });
-        buttons.appendChild(deleteBtn);
 
         wrapper.appendChild(buttons);
         area.appendChild(wrapper);
@@ -974,10 +1193,10 @@ function renderCurrentQuestion() {
     current.choices.forEach((choice, index) => {
         const button = document.createElement("button");
         button.type = "button";
-        button.className = "w-full text-left p-4 bg-white hover:bg-blue-50/50 active:bg-blue-100/60 border-2 border-slate-200 hover:border-blue-500 rounded-2xl transition duration-150 flex flex-col items-center justify-center space-y-3 shadow-sm group";
+        button.className = "w-full text-left p-4 bg-white hover:bg-blue-50/50 border-2 border-slate-200 hover:border-blue-500 rounded-2xl transition flex flex-col items-center justify-center space-y-3 shadow-xs group";
 
         const text = document.createElement("div");
-        text.className = "font-bold text-slate-800 text-base text-center group-hover:text-blue-700 transition";
+        text.className = "font-bold text-slate-800 text-base text-center group-hover:text-blue-700";
         text.textContent = choice.text;
         button.appendChild(text);
 
@@ -985,7 +1204,6 @@ function renderCurrentQuestion() {
             const image = document.createElement("img");
             image.className = "w-full max-h-48 object-contain rounded-xl border border-slate-100 bg-slate-50";
             image.src = choice.image;
-            image.alt = choice.text || "選択肢画像";
             button.appendChild(image);
         }
 
@@ -1000,7 +1218,6 @@ function renderCurrentQuestion() {
 function moveQuestion(step) {
     const nextIndex = surveyData.currentQuestionIndex + step;
     if (nextIndex < 0 || nextIndex >= surveyData.questions.length) return;
-
     surveyData.currentQuestionIndex = nextIndex;
     void saveData();
     renderCurrentQuestion();
@@ -1013,12 +1230,19 @@ function vote(choiceIndex) {
     showToast(`「${current.choices[choiceIndex].text}」に投票しました！`, "success");
 }
 
-function showResults() {
-    showScreen("resultScreen");
+async function fetchAndMergeResults() {
+    if (surveyData && surveyData.id) {
+        const cloudData = await fetchSurveyFromCloud(surveyData.id);
+        if (cloudData && cloudData.questions) {
+            surveyData = cloudData;
+        }
+    }
+    renderResultsUI();
+}
 
+function renderResultsUI() {
     const area = document.getElementById("resultsArea");
     area.textContent = "";
-
     let totalVotesOverall = 0;
 
     surveyData.questions.forEach((item, questionIndex) => {
@@ -1055,36 +1279,16 @@ function showResults() {
 
             const labelRow = document.createElement("div");
             labelRow.className = "flex justify-between items-center text-sm font-semibold text-slate-800";
-
-            const nameText = document.createElement("span");
-            nameText.textContent = choice.text;
-            labelRow.appendChild(nameText);
-
-            const countText = document.createElement("span");
-            countText.className = "text-indigo-600 font-bold";
-            countText.textContent = `${voteCount} 票 (${pct}%)`;
-            labelRow.appendChild(countText);
-
+            labelRow.innerHTML = `<span>${choice.text}</span><span class="text-indigo-600 font-bold">${voteCount} 票 (${pct}%)</span>`;
             resultItem.appendChild(labelRow);
 
-            // Progress bar
             const barBg = document.createElement("div");
             barBg.className = "w-full h-3 bg-slate-100 rounded-full overflow-hidden";
-
             const barFill = document.createElement("div");
-            barFill.className = "h-full bg-indigo-600 rounded-full transition-all duration-500 ease-out";
+            barFill.className = "h-full bg-indigo-600 rounded-full transition-all duration-500";
             barFill.style.width = `${pct}%`;
             barBg.appendChild(barFill);
-
             resultItem.appendChild(barBg);
-
-            if (choice.image) {
-                const image = document.createElement("img");
-                image.className = "max-h-32 object-contain rounded-lg border border-slate-100 bg-slate-50 mt-2";
-                image.src = choice.image;
-                image.alt = choice.text || "選択肢画像";
-                resultItem.appendChild(image);
-            }
 
             choicesGrid.appendChild(resultItem);
         });
@@ -1093,40 +1297,28 @@ function showResults() {
         area.appendChild(section);
     });
 
-    document.getElementById("totalVotesSummary").textContent = `全質問 累計投票数: ${totalVotesOverall}票`;
+    document.getElementById("totalVotesSummary").textContent = `累計: ${totalVotesOverall}票`;
 }
 
-// Save named survey
+function showResults() {
+    showScreen("resultScreen");
+    void fetchAndMergeResults();
+}
+
 async function saveCurrentSurveyByName() {
-    if (!isValidSurveyData(surveyData)) {
-        showToast("保存できるアンケートデータがありません", "error");
-        return;
-    }
-
-    const input = document.getElementById("saveSurveyNameInput");
-    const name = input.value.trim();
-
-    if (name === "") {
-        showToast("保存名を入力してください", "error");
-        return;
-    }
-
-    try {
-        const savedId = await saveNamedSurvey(name, editingSurveyId);
-        editingSurveyId = savedId;
-        updateEditingStateUI(name);
-        input.value = "";
-        await renderSavedSurveys();
-        showToast(`「${name}」として保存しました`, "success");
-    } catch (err) {
-        showToast("保存処理に失敗しました", "error");
-    }
+    const name = document.getElementById("saveSurveyNameInput").value.trim();
+    if (!name) { showToast("保存名を入力してください", "error"); return; }
+    const savedId = await saveNamedSurvey(name, editingSurveyId);
+    editingSurveyId = savedId;
+    updateEditingStateUI(name);
+    document.getElementById("saveSurveyNameInput").value = "";
+    await renderSavedSurveys();
+    showToast(`「${name}」を保存しました`, "success");
 }
 
 async function backToSetup() {
-    const confirmed = await customConfirm("アンケートの作成・編集画面に戻りますか？", "画面の移動");
+    const confirmed = await customConfirm("作成・編集画面に戻りますか？");
     if (!confirmed) return;
-
     editingSurveyId = null;
     updateEditingStateUI(null);
     surveyData = emptySurveyData();
@@ -1135,24 +1327,28 @@ async function backToSetup() {
 }
 
 async function resetVotes() {
-    const confirmed = await customConfirm("現在の投票結果を全て0にリセットしますか？", "投票リセット");
+    const confirmed = await customConfirm("投票結果をリセットしますか？");
     if (!confirmed) return;
-
-    surveyData.questions.forEach((item) => {
-        item.votes = new Array(item.choices.length).fill(0);
-    });
-
+    surveyData.questions.forEach((item) => { item.votes = new Array(item.choices.length).fill(0); });
     await saveData();
-    showToast("投票数をリセットしました", "info");
+    showToast("リセットしました", "info");
     renderCurrentQuestion();
 }
 
-// App Initialization
 async function initializeApp() {
     await initializeStorage();
+
+    // Check URL query param for Online Responder mode (?sid=xxx)
+    const urlParams = new URLSearchParams(window.location.search);
+    const sid = urlParams.get("sid");
+
+    if (sid) {
+        await setupResponderMode(sid);
+        return;
+    }
+
     await renderSavedSurveys();
 
-    // Check if draft state exists
     try {
         const draft = await readAppState(DRAFT_KEY);
         const normalized = normalizeSurveyData(draft);
@@ -1161,22 +1357,19 @@ async function initializeApp() {
             startVoteScreen();
             return;
         }
-    } catch (e) {
-        console.warn("No draft found");
-    }
+    } catch (e) {}
 
-    // Default setup screen
     renderSetupInputs();
     showScreen("setupScreen");
 }
 
-// Event Listeners
-document.getElementById("addQuestionBtn").addEventListener("click", addQuestion);
+// ----------------------------------------------------
+// Event Listeners & Tab Switches
+// ----------------------------------------------------
 
+document.getElementById("addQuestionBtn").addEventListener("click", addQuestion);
 document.getElementById("createSurveyButton").addEventListener("click", () => {
-    createSurvey().catch((error) => {
-        showToast(error.message, "error");
-    });
+    createSurvey().catch((err) => showToast(err.message, "error"));
 });
 
 document.getElementById("cancelEditButton").addEventListener("click", () => {
@@ -1184,7 +1377,6 @@ document.getElementById("cancelEditButton").addEventListener("click", () => {
     updateEditingStateUI(null);
     surveyData = emptySurveyData();
     renderSetupInputs();
-    showToast("新規作成モードに戻りました", "info");
 });
 
 document.getElementById("editCurrentSurveyBtn").addEventListener("click", () => {
@@ -1200,8 +1392,27 @@ document.getElementById("backToVoteButton").addEventListener("click", () => star
 document.getElementById("backToSetupButton").addEventListener("click", () => void backToSetup());
 document.getElementById("backToSetupFromResultButton").addEventListener("click", () => void backToSetup());
 document.getElementById("saveSurveyButton").addEventListener("click", () => void saveCurrentSurveyByName());
+document.getElementById("refreshResultsBtn").addEventListener("click", () => void fetchAndMergeResults());
 
-// Start application on load
+// Modals
+document.getElementById("shareSurveyBtn").addEventListener("click", openShareModal);
+document.getElementById("closeShareModalBtn").addEventListener("click", closeShareModal);
+document.getElementById("copyOnlineUrlBtn").addEventListener("click", copyOnlineUrl);
+document.getElementById("submitOnlineAnswerBtn").addEventListener("click", () => void submitOnlineAnswer());
+
+// Auto refresh interval toggle
+document.getElementById("autoRefreshToggle").addEventListener("change", (e) => {
+    if (e.target.checked) {
+        autoRefreshTimer = setInterval(() => {
+            void fetchAndMergeResults();
+        }, 5000);
+        showToast("5秒毎の自動更新を有効にしました", "info");
+    } else {
+        if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+        showToast("自動更新を停止しました", "info");
+    }
+});
+
 window.onload = function () {
     void initializeApp();
 };
